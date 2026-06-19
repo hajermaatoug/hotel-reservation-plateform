@@ -223,9 +223,29 @@ exports.modifierReservation = async (req, res) => {
     const chambreNumero = req.body.chambreNumero ?? existante.chambreNumero;
     const dateDebut = req.body.dateDebut ?? existante.dateDebut;
     const dateFin = req.body.dateFin ?? existante.dateFin;
+    const nombrePersonnes = req.body.nombrePersonnes ?? existante.nombrePersonnes;
 
     if (new Date(dateFin) <= new Date(dateDebut)) {
       return res.status(400).json({ error: 'dateFin doit etre strictement posterieure a dateDebut' });
+    }
+
+    // Valide l'existence et l'état de la chambre cible avant modification.
+    let chambre;
+    try {
+      chambre = await getChambreParNumero(chambreNumero);
+    } catch (err) {
+      return res.status(503).json({ error: err.message });
+    }
+    if (!chambre) {
+      return res.status(404).json({ error: `Chambre numero ${chambreNumero} inexistante` });
+    }
+    if (chambre.disponible === false) {
+      return res.status(409).json({ error: `Chambre numero ${chambreNumero} indisponible (hors service)` });
+    }
+    if (nombrePersonnes > chambre.capacite) {
+      return res.status(409).json({
+        error: `Capacite depassee : la chambre accueille ${chambre.capacite} personne(s), demande ${nombrePersonnes}`,
+      });
     }
 
     const conflits = await reservationsEnConflit(chambreNumero, dateDebut, dateFin, existante._id);
@@ -233,7 +253,16 @@ exports.modifierReservation = async (req, res) => {
       return res.status(409).json({ error: 'Chambre deja reservee sur cette periode', conflits });
     }
 
-    const reservation = await Reservation.findByIdAndUpdate(req.params.id, req.body, {
+    const updateData = { ...req.body };
+    const dateChange = req.body.dateDebut || req.body.dateFin;
+    const chambreChange = req.body.chambreNumero !== undefined && req.body.chambreNumero !== existante.chambreNumero;
+
+    if (req.body.montantTotal === undefined && (dateChange || chambreChange)) {
+      const nuits = nombreNuits(dateDebut, dateFin);
+      updateData.montantTotal = nuits * chambre.prixParNuit;
+    }
+
+    const reservation = await Reservation.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     });
