@@ -1,0 +1,17 @@
+{
+  "name": "service-discovery",
+  "version": "1.0.0",
+  "description": "Registre de services pour la plateforme de reservation d'hotel",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

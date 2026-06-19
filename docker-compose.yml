@@ -1,0 +1,120 @@
+services:
+  # ----------------------- Bases de donnees -----------------------
+  mongo-chambre:
+    image: mongo:7
+    container_name: mongo-chambre
+    restart: unless-stopped
+    ports:
+      - "27017:27017"          # port hote impose : 27017
+    volumes:
+      - mongo_chambre_data:/data/db
+    networks:
+      - hotel-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-reservation:
+    image: mongo:7
+    container_name: mongo-reservation
+    restart: unless-stopped
+    ports:
+      - "27018:27017"          # port hote impose : 27018 (interne 27017)
+    volumes:
+      - mongo_reservation_data:/data/db
+    networks:
+      - hotel-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------- Service Discovery -----------------------
+  service-discovery:
+    build: ./service-discovery
+    container_name: service-discovery
+    restart: unless-stopped
+    ports:
+      - "4002:4002"
+    environment:
+      - PORT=4002
+    networks:
+      - hotel-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:4002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------- Microservice Chambre -----------------------
+  chambre-service:
+    build: ./chambre-service
+    container_name: chambre-service
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - MONGO_URI=mongodb://mongo-chambre:27017/chambres_db
+      - DISCOVERY_URL=http://service-discovery:4002
+      - SERVICE_HOST=chambre-service
+    depends_on:
+      mongo-chambre:
+        condition: service_healthy
+      service-discovery:
+        condition: service_started
+    networks:
+      - hotel-net
+
+  # ----------------------- Microservice Reservation -----------------------
+  reservation-service:
+    build: ./reservation-service
+    container_name: reservation-service
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - MONGO_URI=mongodb://mongo-reservation:27017/reservations_db
+      - DISCOVERY_URL=http://service-discovery:4002
+      - SERVICE_HOST=reservation-service
+    depends_on:
+      mongo-reservation:
+        condition: service_healthy
+      service-discovery:
+        condition: service_started
+      chambre-service:
+        condition: service_started
+    networks:
+      - hotel-net
+
+  # ----------------------- API Gateway -----------------------
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - DISCOVERY_URL=http://service-discovery:4002
+    depends_on:
+      service-discovery:
+        condition: service_started
+      chambre-service:
+        condition: service_started
+      reservation-service:
+        condition: service_started
+    networks:
+      - hotel-net
+
+networks:
+  hotel-net:
+    driver: bridge
+
+volumes:
+  mongo_chambre_data:
+  mongo_reservation_data:

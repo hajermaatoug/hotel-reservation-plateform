@@ -1,0 +1,202 @@
+{
+  "info": {
+    "name": "Hotel Reservation Platform (Microservices)",
+    "description": "Collection complete : Chambres, Reservations, Infrastructure. Toutes les requetes passent par l'API Gateway (port 5001). Les variables {{chambreId}} et {{reservationId}} sont remplies automatiquement par les scripts de test.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gateway", "value": "http://localhost:5001" },
+    { "key": "discovery", "value": "http://localhost:4002" },
+    { "key": "chambreService", "value": "http://localhost:3001" },
+    { "key": "reservationService", "value": "http://localhost:3002" },
+    { "key": "chambreId", "value": "" },
+    { "key": "reservationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Infrastructure",
+      "item": [
+        {
+          "name": "Gateway - health",
+          "request": { "method": "GET", "url": { "raw": "{{gateway}}/health", "host": ["{{gateway}}"], "path": ["health"] } }
+        },
+        {
+          "name": "Services enregistres",
+          "request": { "method": "GET", "url": { "raw": "{{gateway}}/api/services", "host": ["{{gateway}}"], "path": ["api", "services"] } }
+        },
+        {
+          "name": "Discovery - liste directe",
+          "request": { "method": "GET", "url": { "raw": "{{discovery}}/services", "host": ["{{discovery}}"], "path": ["services"] } }
+        }
+      ]
+    },
+    {
+      "name": "Chambres",
+      "item": [
+        {
+          "name": "Creer chambre 101 (Double)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data && data._id) { pm.collectionVariables.set('chambreId', data._id); }",
+                  "pm.test('Statut 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"numero\": 101,\n  \"prixParNuit\": 120,\n  \"capacite\": 4,\n  \"type\": \"Double\",\n  \"description\": \"Chambre avec vue mer\"\n}" },
+            "url": { "raw": "{{gateway}}/api/chambres", "host": ["{{gateway}}"], "path": ["api", "chambres"] }
+          }
+        },
+        {
+          "name": "Creer chambre 102 (Simple)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"numero\": 102,\n  \"prixParNuit\": 80,\n  \"capacite\": 2,\n  \"type\": \"Simple\"\n}" },
+            "url": { "raw": "{{gateway}}/api/chambres", "host": ["{{gateway}}"], "path": ["api", "chambres"] }
+          }
+        },
+        {
+          "name": "Creer chambre INVALIDE (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"numero\": 103,\n  \"prixParNuit\": -5,\n  \"capacite\": 99,\n  \"type\": \"Penthouse\"\n}" },
+            "url": { "raw": "{{gateway}}/api/chambres", "host": ["{{gateway}}"], "path": ["api", "chambres"] }
+          }
+        },
+        {
+          "name": "Lister chambres (+ filtres)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{gateway}}/api/chambres?disponible=true&type=Double",
+              "host": ["{{gateway}}"],
+              "path": ["api", "chambres"],
+              "query": [
+                { "key": "disponible", "value": "true" },
+                { "key": "type", "value": "Double" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtenir chambre par id",
+          "request": { "method": "GET", "url": { "raw": "{{gateway}}/api/chambres/{{chambreId}}", "host": ["{{gateway}}"], "path": ["api", "chambres", "{{chambreId}}"] } }
+        },
+        {
+          "name": "Obtenir chambre par numero",
+          "request": { "method": "GET", "url": { "raw": "{{gateway}}/api/chambres/numero/101", "host": ["{{gateway}}"], "path": ["api", "chambres", "numero", "101"] } }
+        },
+        {
+          "name": "Modifier chambre",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"prixParNuit\": 135,\n  \"disponible\": true\n}" },
+            "url": { "raw": "{{gateway}}/api/chambres/{{chambreId}}", "host": ["{{gateway}}"], "path": ["api", "chambres", "{{chambreId}}"] }
+          }
+        },
+        {
+          "name": "Supprimer chambre",
+          "request": { "method": "DELETE", "url": { "raw": "{{gateway}}/api/chambres/{{chambreId}}", "host": ["{{gateway}}"], "path": ["api", "chambres", "{{chambreId}}"] } }
+        }
+      ]
+    },
+    {
+      "name": "Reservations",
+      "item": [
+        {
+          "name": "Creer reservation (montant auto)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data && data.reservation && data.reservation._id) { pm.collectionVariables.set('reservationId', data.reservation._id); }",
+                  "pm.test('Statut 201', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"clientNom\": \"Rayane Jojo\",\n  \"clientEmail\": \"jojo@dauphine.fr\",\n  \"chambreNumero\": 101,\n  \"dateDebut\": \"2026-07-10\",\n  \"dateFin\": \"2026-07-13\",\n  \"nombrePersonnes\": 2\n}" },
+            "url": { "raw": "{{gateway}}/api/reservations", "host": ["{{gateway}}"], "path": ["api", "reservations"] }
+          }
+        },
+        {
+          "name": "Creer reservation CHEVAUCHEMENT (409)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"clientNom\": \"Client Conflit\",\n  \"clientEmail\": \"conflit@y.fr\",\n  \"chambreNumero\": 101,\n  \"dateDebut\": \"2026-07-12\",\n  \"dateFin\": \"2026-07-15\",\n  \"nombrePersonnes\": 1\n}" },
+            "url": { "raw": "{{gateway}}/api/reservations", "host": ["{{gateway}}"], "path": ["api", "reservations"] }
+          }
+        },
+        {
+          "name": "Creer reservation CHAMBRE INEXISTANTE (404)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"clientNom\": \"Client Test\",\n  \"clientEmail\": \"test@y.fr\",\n  \"chambreNumero\": 999,\n  \"dateDebut\": \"2026-08-01\",\n  \"dateFin\": \"2026-08-03\",\n  \"nombrePersonnes\": 1\n}" },
+            "url": { "raw": "{{gateway}}/api/reservations", "host": ["{{gateway}}"], "path": ["api", "reservations"] }
+          }
+        },
+        {
+          "name": "Verifier disponibilite",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"chambreNumero\": 101,\n  \"dateDebut\": \"2026-07-11\",\n  \"dateFin\": \"2026-07-14\"\n}" },
+            "url": { "raw": "{{gateway}}/api/reservations/disponibilite", "host": ["{{gateway}}"], "path": ["api", "reservations", "disponibilite"] }
+          }
+        },
+        {
+          "name": "Statistiques globales",
+          "request": { "method": "GET", "url": { "raw": "{{gateway}}/api/reservations/statistiques", "host": ["{{gateway}}"], "path": ["api", "reservations", "statistiques"] } }
+        },
+        {
+          "name": "Lister reservations (+ filtres)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{gateway}}/api/reservations?chambreNumero=101",
+              "host": ["{{gateway}}"],
+              "path": ["api", "reservations"],
+              "query": [{ "key": "chambreNumero", "value": "101" }]
+            }
+          }
+        },
+        {
+          "name": "Obtenir reservation par id",
+          "request": { "method": "GET", "url": { "raw": "{{gateway}}/api/reservations/{{reservationId}}", "host": ["{{gateway}}"], "path": ["api", "reservations", "{{reservationId}}"] } }
+        },
+        {
+          "name": "Modifier reservation",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"nombrePersonnes\": 3\n}" },
+            "url": { "raw": "{{gateway}}/api/reservations/{{reservationId}}", "host": ["{{gateway}}"], "path": ["api", "reservations", "{{reservationId}}"] }
+          }
+        },
+        {
+          "name": "Supprimer reservation",
+          "request": { "method": "DELETE", "url": { "raw": "{{gateway}}/api/reservations/{{reservationId}}", "host": ["{{gateway}}"], "path": ["api", "reservations", "{{reservationId}}"] } }
+        }
+      ]
+    }
+  ]
+}
