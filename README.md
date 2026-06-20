@@ -98,4 +98,6 @@ Ordre conseillé : créer la chambre 101 → créer la chambre 102 → créer un
 
 ## Documentation détaillée
 
+<!-- Small test commit -->
+
 Voir `RAPPORT_TECHNIQUE.md` (liste exhaustive des endpoints, règles de validation, décisions de conception, lien GitHub).
