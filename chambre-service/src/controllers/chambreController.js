@@ -31,7 +31,11 @@ exports.listerChambres = async (req, res) => {
     if (req.query.disponible !== undefined) filtre.disponible = req.query.disponible === 'true';
     if (req.query.type) filtre.type = req.query.type;
     if (req.query.capaciteMin) filtre.capacite = { $gte: Number(req.query.capaciteMin) };
-    if (req.query.prixMax) filtre.prixParNuit = { $lte: Number(req.query.prixMax) };
+    if (req.query.prixMin || req.query.prixMax) {
+      filtre.prixParNuit = {};
+      if (req.query.prixMin) filtre.prixParNuit.$gte = Number(req.query.prixMin);
+      if (req.query.prixMax) filtre.prixParNuit.$lte = Number(req.query.prixMax);
+    }
 
     const chambres = await Chambre.find(filtre).sort({ numero: 1 });
     return res.json({ total: chambres.length, data: chambres });
