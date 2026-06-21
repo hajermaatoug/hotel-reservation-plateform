@@ -14,6 +14,8 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const axios = require('axios');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
 
 const app = express();
 app.use(cors());
@@ -81,6 +83,8 @@ function creerProxy(serviceName, prefixeCible) {
     }
   };
 }
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get('/health', (req, res) => res.json({ status: 'UP', service: 'api-gateway', services: serviceCache }));
 app.get('/api/services', async (req, res) => {
